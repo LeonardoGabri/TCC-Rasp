@@ -140,24 +140,42 @@ def velocidade():
     resultvelo.value = round(windSpeed(rotacao), 10)
 
 #Método de inserção de registro no BD
-def incluir_registro_anemometro(velocidade, direcao, angulo):
+def incluir_registro_anemometro(velocidade, direcao, angulo, voltagem):
     iniciaCon()
     data_atual = datetime.now()
     
     uuidRandom = uuid.uuid4()
-    query = "INSERT INTO anemometro123 (id, angulo, velocidade, direcao, data) VALUES(%s, %s, %s, %s, %s)"
+    query = "INSERT INTO anemometro123 (id, angulo, velocidade, direcao, data, energia_gerada) VALUES(%s, %s, %s, %s, %s, %s)"
     cursor.execute(query, (
         str(uuidRandom),
         angulo,
         Decimal(velocidade),
         str(direcao),
-        data_atual
+        data_atual ,
+        voltagem
     ))
     connection.commit()
     connection.close()
-    print(data_atual)
     print("executou incluir registro")
    
+def verificaEstado():
+    iniciaCon()
+    query = "SELECT * FROM portas"
+    cursor.execute(query)
+    connection.commit()
+    connection.close()
+    resultado = cursor.fetchall()
+    for x in resultado:
+        print(x)
+    
+def listar_registros_portas():
+    iniciaCon()
+    query = f"SELECT * FROM portas"
+    df = pd.read_sql_query(query, con=connection)
+    registros = df.to_dict(orient='records')
+    connection.close()
+    return registros[0]['funcionamento_normal']
+
 #Metodo que retorna a voltagem capturada pelo mini gerador eólico   
 def Voltagem():
     volt = 0
@@ -370,7 +388,6 @@ def ajustePortas(direcao):
     
 #execução
 if __name__ == '__main__':
-    
     resultvolt = multiprocessing.Value('f',0.0)
     resultvelo = multiprocessing.Value('f',0.0)
     movendoPortas = multiprocessing.Value('b',False)
@@ -385,29 +402,31 @@ if __name__ == '__main__':
         pVolt.join()
         pVelo.join()
         angulovolt = canal0.voltage
-        if(movendoPortas.value==False and resultvelo.value > 2):
-            movendoPortas.value = True;
-            time.sleep(1)
-            pMove = multiprocessing.Process(target=ajustePortas,args=(direcao(angulovolt).lower(),))
-            pMove.start()
-        
+        if(listar_registros_portas()):
+            if(movendoPortas.value==False and resultvelo.value > 6):
+                movendoPortas.value = True;
+                time.sleep(1)
+                pMove = multiprocessing.Process(target=ajustePortas,args=(direcao(angulovolt).lower(),))
+                pMove.start()
+        else:
+            if(movendoPortas.value == False):
+                movendoPortas.value = True;
+                pMove = multiprocessing.Process(target=ajustePortas,args=("fechado",))
+                pMove.start()
         print('Voltagem %s' % resultvolt.value)
         print('Velocidade %s' % resultvelo.value)
         print('Valor da direcao %s' % angulovolt)
         print('Direcao %s' % direcao(angulovolt))
         
         try:    
-            incluir_registro_anemometro(resultvelo.value, direcao(angulovolt), direcaoAngulo(angulovolt))
+            incluir_registro_anemometro(resultvelo.value, direcao(angulovolt), direcaoAngulo(angulovolt), resultvolt.value)
         except:
             print("Erro de conexão, nova tentativa será efetuada.")
-        print('reset')
+        print('--reset--')
         '''
-        Velocidade  = velocidade()
-        print("Velocidade : %.2f metros por segundo." % Velocidade)
-        #print(canal0.value, canal0.voltage)
-        print("Direção: %s" % direcao(canal0.voltage))
-        print("Angulo: %s°" % direcaoAngulo(canal0.voltage))
-        
-        #print(GPIO.input(4))
-        print("--o--")
+        movePorta(0, Porta1)
+        movePorta(0, Porta2)
+        movePorta(0, Porta3)
+        movePorta(90, Porta4)
+        time.sleep(360)
         '''
