@@ -402,17 +402,21 @@ if __name__ == '__main__':
         pVolt.join()
         pVelo.join()
         angulovolt = canal0.voltage
-        if(listar_registros_portas()):
-            if(movendoPortas.value==False and resultvelo.value > 6):
-                movendoPortas.value = True;
-                time.sleep(1)
-                pMove = multiprocessing.Process(target=ajustePortas,args=(direcao(angulovolt).lower(),))
-                pMove.start()
-        else:
-            if(movendoPortas.value == False):
-                movendoPortas.value = True;
-                pMove = multiprocessing.Process(target=ajustePortas,args=("fechado",))
-                pMove.start()
+        try:
+            if(listar_registros_portas()):
+                if(movendoPortas.value==False and resultvelo.value > 6):
+                    movendoPortas.value = True;
+                    time.sleep(1)
+                    pMove = multiprocessing.Process(target=ajustePortas,args=(direcao(angulovolt).lower(),))
+                    pMove.start()
+            else:
+                if(movendoPortas.value == False):
+                    movendoPortas.value = True;
+                    pMove = multiprocessing.Process(target=ajustePortas,args=("fechado",))
+                    pMove.start()
+        except:
+            print("Sem conexão com internet.")
+        
         print('Voltagem %s' % resultvolt.value)
         print('Velocidade %s' % resultvelo.value)
         print('Valor da direcao %s' % angulovolt)
